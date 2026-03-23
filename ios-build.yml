@@ -1,1 +1,38 @@
+name: Build Virtual Zen IPA
 
+on:
+  push:
+    branches: [ main ] # This runs the build every time you push to 'main'
+  workflow_dispatch: # This adds a "Run Workflow" button you can click manually
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Build Archive
+        run: |
+          xcodebuild archive \
+            -scheme "VirtualZen" \
+            -archivePath ./build/VirtualZen.xcarchive \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export IPA (Unsigned)
+        run: |
+          mkdir -p Payload
+          cp -r ./build/VirtualZen.xcarchive/Products/Applications/*.app Payload/
+          zip -r VirtualZen.ipa Payload
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: VirtualZen.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
